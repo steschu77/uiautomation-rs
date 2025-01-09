@@ -432,14 +432,32 @@ fn parse_input(expression: &str) -> Result<Vec<Input>> {
 
 fn next_input(expr: &mut Chars<'_>) -> Result<Option<(Vec<InputItem>, bool)>> {
     if let Some(ch) = expr.next() {
+        // try to parse the special key(s). If successful, return the key(s) and the state of expr after parsing.
+        // Otherwise, if failed, return the '{' character and revert the state of expr as it was before parsing.
         let next = match ch {
             '{' => {
-                let item = read_special_item(expr)?;
-                Some((vec![item], item.is_holdkey()))
+                let expr_copy = expr.clone();
+                match read_special_item(expr) {
+                    Ok(item) => {
+                        Some((vec![item], item.is_holdkey()))
+                    },
+                    Err(_) => {
+                        expr.clone_from(&expr_copy);
+                        Some((vec![InputItem::Character('{')], false))
+                    },
+                }
             }
             '(' => {
-                let items = read_group_items(expr)?;
-                Some((items, false))
+                let expr_copy = expr.clone();
+                match read_group_items(expr) {
+                    Ok(items) => {
+                        Some((items, false))
+                    }
+                    Err(_) => {
+                        expr.clone_from(&expr_copy);
+                        Some((vec![InputItem::Character('(')], false))
+                    }
+                }
             }
             _ => Some((vec![InputItem::Character(ch)], false)),
         };
